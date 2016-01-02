@@ -53,12 +53,7 @@ describe ContactList do
       end
 
       it "adds a new contact to the database" do
-        results = Contact.connection.exec('SELECT count(*) FROM contacts');
-        expect(results.values[0][0].to_i).to eq(3)
-      end
-
-      it "responds with OK" do
-        expect(@response.result_status).to eq(PG::Constants::PGRES_COMMAND_OK)
+        expect(Contact.all.count).to eq(3)
       end
     end
 
@@ -68,7 +63,8 @@ describe ContactList do
                                                                     "   (604)555-1234\n").to_stdout
         expect { ContactList.new(['show', '2']).process }.to output("2: Don Burks (don@lighthouselabs.ca)\n"\
                                                                     "   (604)555-4321\n").to_stdout
-        Contact.connection.exec("INSERT INTO phone_numbers (number, contact_id) VALUES ('(604)266-1234', 2)");
+        contact = Contact.find(2)
+        contact.phone_numbers.create(number: '(604)266-1234')
         expect { ContactList.new(['show', '2']).process }.to output("2: Don Burks (don@lighthouselabs.ca)\n"\
                                                                     "   (604)555-4321\n"\
                                                                     "   (604)266-1234\n").to_stdout
@@ -125,15 +121,15 @@ describe ContactList do
       end
 
       it "updates the existing contact database" do
-        results = Contact.connection.exec("SELECT * FROM contacts WHERE id = '1'");
-        expect(results.values[0][0]).to eq('1')
-        expect(results.values[0][1]).to eq('Khurram Virani')
-        expect(results.values[0][2]).to eq('kvirani@lighthouselabs.ca')
+        results = Contact.find(1);
+        expect(results.id).to eq(1)
+        expect(results.name).to eq('Khurram Virani')
+        expect(results.email).to eq('kvirani@lighthouselabs.ca')
 
-        phone_numbers = Contact.connection.exec("SELECT * FROM phone_numbers WHERE contact_id = 1")
-        expect(phone_numbers.values[0][0]).to eq('1')
-        expect(phone_numbers.values[0][1]).to eq('(604)555-1234')
-        expect(phone_numbers.values[0][2]).to eq('1')
+        phone_numbers = PhoneNumber.where(contact_id: 1);
+        expect(phone_numbers[0].id).to eq(1)
+        expect(phone_numbers[0].number).to eq('(604)555-1234')
+        expect(phone_numbers[0].contact_id).to eq(1)
         
         contact = ContactList.new(['update', '1'])
 
@@ -144,21 +140,21 @@ describe ContactList do
         end
         contact.process
 
-        results = Contact.connection.exec("SELECT * FROM contacts WHERE id = '1'");
-        expect(results.values[0][0]).to eq('1')
-        expect(results.values[0][1]).to eq('Khurram Macho Man Virani')
-        expect(results.values[0][2]).to eq('khurram@wwe.com')
+        results = Contact.find(1);
+        expect(results.id).to eq(1)
+        expect(results.name).to eq('Khurram Macho Man Virani')
+        expect(results.email).to eq('khurram@wwe.com')
 
-        phone_numbers = Contact.connection.exec("SELECT * FROM phone_numbers WHERE contact_id = 1")
-        expect(phone_numbers.values.count).to eq(1)
-        expect(phone_numbers.values[0][0]).to eq('1')
-        expect(phone_numbers.values[0][1]).to eq('(604)555-9999')
-        expect(phone_numbers.values[0][2]).to eq('1')
+        phone_numbers = PhoneNumber.where(contact_id: 1);
+        expect(phone_numbers.count).to eq(1)
+        expect(phone_numbers[0].id).to eq(1)
+        expect(phone_numbers[0].number).to eq('(604)555-9999')
+        expect(phone_numbers[0].contact_id).to eq(1)
       end
 
       it "does not add a new record" do
-        results = Contact.connection.exec('SELECT count(*) FROM contacts');
-        expect(results.values[0][0].to_i).to eq(2)
+        results = Contact.all.count
+        expect(results).to eq(2)
 
         contact = ContactList.new(['update', '1'])
         call = -1 
@@ -167,15 +163,15 @@ describe ContactList do
         end
         contact.process
 
-        results = Contact.connection.exec('SELECT count(*) FROM contacts');
-        expect(results.values[0][0].to_i).to eq(2)
+        results = Contact.all.count
+        expect(results).to eq(2)
       end
 
       it "doesn't change record if no input provided" do
-        results = Contact.connection.exec("SELECT * FROM contacts WHERE id = '1'");
-        expect(results.values[0][0]).to eq('1')
-        expect(results.values[0][1]).to eq('Khurram Virani')
-        expect(results.values[0][2]).to eq('kvirani@lighthouselabs.ca')
+        results = Contact.find(1)
+        expect(results.id).to eq(1)
+        expect(results.name).to eq('Khurram Virani')
+        expect(results.email).to eq('kvirani@lighthouselabs.ca')
 
         contact = ContactList.new(['update', '1'])
 
@@ -185,10 +181,10 @@ describe ContactList do
         end
         contact.process
 
-        results = Contact.connection.exec("SELECT * FROM contacts WHERE id = '1'");
-        expect(results.values[0][0]).to eq('1')
-        expect(results.values[0][1]).to eq('Khurram Virani')
-        expect(results.values[0][2]).to eq('kvirani@lighthouselabs.ca')
+        results = Contact.find(1)
+        expect(results.id).to eq(1)
+        expect(results.name).to eq('Khurram Virani')
+        expect(results.email).to eq('kvirani@lighthouselabs.ca')
       end
 
       it "doesn't barf if ID is out of range" do
@@ -199,8 +195,8 @@ describe ContactList do
       end
 
       it "lets you delete phone numbers by entering 'X'" do
-        results = Contact.connection.exec('SELECT count(*) FROM phone_numbers');
-        expect(results.values[0][0].to_i).to eq(2)
+        results = PhoneNumber.all.count
+        expect(results).to eq(2)
 
         contact = ContactList.new(['update', '1'])
 
@@ -210,13 +206,13 @@ describe ContactList do
         end
         contact.process
 
-        results = Contact.connection.exec('SELECT count(*) FROM phone_numbers');
-        expect(results.values[0][0].to_i).to eq(1)
+        results = PhoneNumber.all.count
+        expect(results).to eq(1)
       end
 
       it "lets you add new phone numbers" do
-        results = Contact.connection.exec('SELECT count(*) FROM phone_numbers');
-        expect(results.values[0][0].to_i).to eq(2)
+        results = PhoneNumber.all.count
+        expect(results).to eq(2)
 
         contact = ContactList.new(['update', '1'])
 
@@ -226,25 +222,25 @@ describe ContactList do
         end
         contact.process
 
-        results = Contact.connection.exec('SELECT count(*) FROM phone_numbers');
-        expect(results.values[0][0].to_i).to eq(4)
+        results = PhoneNumber.all.count
+        expect(results).to eq(4)
       end
     end
 
     context "program is executed with 'destroy' argument" do
       it "reports success if contact is removed from the database" do
-        results = Contact.connection.exec('SELECT count(*) FROM contacts');
-        expect(results.values[0][0].to_i).to eq(2)
+        results = Contact.all.count
+        expect(results).to eq(2)
 
         expect { ContactList.new(['destroy', '1']).process }.to output("Contact destroyed\n").to_stdout
 
-        results = Contact.connection.exec('SELECT count(*) FROM contacts');
-        expect(results.values[0][0].to_i).to eq(1)
+        results = Contact.all.count
+        expect(results).to eq(1)
 
         expect { ContactList.new(['destroy', '2']).process }.to output("Contact destroyed\n").to_stdout
 
-        results = Contact.connection.exec('SELECT count(*) FROM contacts');
-        expect(results.values[0][0].to_i).to eq(0)
+        results = Contact.all.count
+        expect(results).to eq(0)
       end
      
       it "doesn't barf if contact doesn't exist" do

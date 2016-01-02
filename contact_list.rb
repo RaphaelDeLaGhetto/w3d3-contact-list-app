@@ -14,7 +14,7 @@ class ContactList
     when 'list'
       contacts = Contact.all
       contacts.each do |contact|
-        puts "#{contact[0]}: #{contact[1]} (#{contact[2]})"
+        puts "#{contact.id}: #{contact.name} (#{contact.email})"
       end
       puts '---'
       puts "#{contacts.count} records total"
@@ -24,67 +24,74 @@ class ContactList
       name = STDIN.gets.chomp
       puts 'Email:'
       email = STDIN.gets.chomp
-      Contact.create(name, email)
+      Contact.create(name: name, email: email)
     when 'show'
       id = @input[1].to_i
-      record = Contact.find(id)
-      if record.nil?
-        puts "That contact doesn't exist"
-      else
+      begin
+        record = Contact.find(id)
         puts "#{record.id}: #{record.name} (#{record.email})"
         record.phone_numbers.each do |number|
-          puts "   #{number[1]}"
+          puts "   #{number.number}"
         end
+      rescue
+        puts "That contact doesn't exist"
       end
     when 'search'
       contacts = Contact.search(@input[1])
       contacts.each do |contact|
-        puts "#{contact[0]}: #{contact[1]} (#{contact[2]})"
+        puts "#{contact.id}: #{contact.name} (#{contact.email})"
       end
       puts '---'
       puts "#{contacts.count} #{"record".pluralize(contacts.count)} total"
     when 'update'
       id = @input[1].to_i
-      record = Contact.find(id)
-      return puts "That contact doesn't exist" if record.nil?
-
-      # Name and email 
-      puts "Name (#{record.name}):"
-      name = STDIN.gets.strip
-      record.name = name if !name.empty?
-      puts "Email (#{record.email}):"
-      email = STDIN.gets.strip
-      record.email = email if !email.empty?
-      record.save
-
-      # Phone numbers 
-      record.phone_numbers.each_with_index do |number, index|
-        puts "Enter 'X' to delete phone number" if index == 0
-        puts "Phone #{index+1} (#{number[1]}):"
-        new_phone = STDIN.gets.strip
-        if !new_phone.empty?
-          old_phone = PhoneNumber.find(number[0].to_i)
-          if new_phone == 'X'
-            old_phone.destroy
-          else
-            old_phone.number = new_phone
-            old_phone.save
+      begin
+        record = Contact.find(id)
+  
+        # Name and email 
+        puts "Name (#{record.name}):"
+        name = STDIN.gets.strip
+        record.name = name if !name.empty?
+        puts "Email (#{record.email}):"
+        email = STDIN.gets.strip
+        record.email = email if !email.empty?
+        record.save
+  
+        # Phone numbers 
+        record.phone_numbers.each_with_index do |number, index|
+          puts "Enter 'X' to delete phone number" if index == 0
+          puts "Phone #{index+1} (#{number.number}):"
+          new_phone = STDIN.gets.strip
+          if !new_phone.empty?
+            old_phone = PhoneNumber.find(number.id)
+            if new_phone == 'X'
+              old_phone.destroy
+            else
+              old_phone.number = new_phone
+              old_phone.save
+            end
           end
         end
-      end
-
-      # Add new numbers?
-     loop do 
-        puts 'New phone number:' 
-        new_phone = STDIN.gets.strip
-        break if new_phone.empty?
-        PhoneNumber.create(new_phone, id)
+  
+        # Add new numbers?
+        loop do 
+          puts 'New phone number:' 
+          new_phone = STDIN.gets.strip
+          break if new_phone.empty?
+          record.phone_numbers.create(number: new_phone)
+        end
+      rescue
+        puts "That contact doesn't exist"
       end
     when 'destroy'
       id = @input[1].to_i
-      record = Contact.find(id)
-      return puts "That contact doesn't exist" if record.nil?
-      puts record.destroy.result_status == PG::Constants::PGRES_COMMAND_OK ? "Contact destroyed" : "Couldn't destroy contact"
+      begin
+        record = Contact.find(id)
+        record.destroy
+        puts "Contact destroyed"
+      rescue
+        puts "That contact doesn't exist"
+      end
     when nil 
       puts "Here is a list of available commands:\n"\
            "  new     - Create a new contact\n"\

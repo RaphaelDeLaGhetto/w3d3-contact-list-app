@@ -1,7 +1,6 @@
 require 'active_record'
 require 'csv'
 require 'database_cleaner'
-require './lib/base_model'
 require './lib/contact'
 require './lib/phone_number'
 
@@ -103,17 +102,19 @@ RSpec.configure do |config|
 
   config.before(:each) do
     # Seed the database
-    @conn = PG.connect(dbname: 'test_contacts')
+#    @conn = PG.connect(dbname: 'test_contacts')
     CSV.foreach("data/contacts.csv") do |record|
-      @conn.exec_params("WITH inserted AS ("\
-                          "INSERT INTO contacts (name, email) VALUES ($1, $2) returning id"\
-                        ") "\
-                        "INSERT INTO phone_numbers (number, contact_id) "\
-                          "VALUES($3, (SELECT id FROM inserted))", record);
+      contact = Contact.create(name: record[0], email: record[1])
+      contact.phone_numbers.create(number: record[2])
+#      @conn.exec_params("WITH inserted AS ("\
+#                          "INSERT INTO contacts (name, email) VALUES ($1, $2) returning id"\
+#                        ") "\
+#                        "INSERT INTO phone_numbers (number, contact_id) "\
+#                          "VALUES($3, (SELECT id FROM inserted))", record);
     end
 
     # Connect to the test database when testing
-    allow(BaseModel).to receive(:connection).and_return(PG.connect(dbname: 'test_contacts'))
+#    allow(BaseModel).to receive(:connection).and_return(PG.connect(dbname: 'test_contacts'))
 
     # Reset DB on each pass
     DatabaseCleaner.strategy = :truncation
@@ -127,6 +128,13 @@ end
 
 # Connect to the DB
 ActiveRecord::Base.establish_connection(
-  :adapter => 'postgresql',
-  :database => 'test_contacts'
+  adapter: 'postgresql',
+  database: 'test_contacts',
+  username: 'development',
+  password: 'development',
+  host: 'localhost',
+  port: 5432,
+  pool: 5,
+  encoding: 'unicode',
+  min_messages: 'error'
 )
