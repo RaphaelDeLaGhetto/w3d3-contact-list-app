@@ -1,5 +1,5 @@
 require 'active_record'
-require 'contact'
+require './lib/contact'
 
 # Represents a person in an address book.
 class PhoneNumber < ActiveRecord::Base

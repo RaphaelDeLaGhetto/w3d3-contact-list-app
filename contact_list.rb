@@ -2,6 +2,7 @@ require './lib/contact'
 require './lib/phone_number'
 require 'active_support/inflector'
 
+
 # Interfaces between a user and their contact list. Reads from and writes to standard I/O.
 class ContactList
 
@@ -105,5 +106,17 @@ class ContactList
 end
 
 if __FILE__ == $PROGRAM_NAME
+  # Connect to the DB
+  ActiveRecord::Base.establish_connection(
+    adapter: 'postgresql',
+    database: 'test_contacts',
+    username: 'development',
+    password: 'development',
+    host: 'localhost',
+    port: 5432,
+    pool: 5,
+    encoding: 'unicode',
+    min_messages: 'error'
+  )
   ContactList.new(ARGV).process
 end
