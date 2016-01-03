@@ -59,19 +59,9 @@ task :create_db do
   conn.exec('DROP DATABASE IF EXISTS contacts')
   conn.exec('CREATE DATABASE contacts')
   connect_and_create
-#  conn = PG.connect(dbname: 'contacts')
-#  conn.exec('CREATE TABLE contacts (id serial NOT NULL PRIMARY KEY, name varchar(40) NOT NULL, email varchar(40) NOT NULL)')
-#  conn.exec('CREATE TABLE phone_numbers (id serial NOT NULL PRIMARY KEY, number varchar(40) NOT NULL, '\
-#                          'contact_id integer NOT NULL REFERENCES contacts(id) ON DELETE CASCADE)')
-#
+
   CSV.foreach("data/contacts.csv") do |record|
     contact = Contact.where(name: record[0], email: record[1]).first_or_create
     contact.phone_numbers.create(number: record[2])
-
-#    conn.exec_params("WITH inserted AS ("\
-#                       "INSERT INTO contacts (name, email) VALUES ($1, $2) returning id"\
-#                     ") "\
-#                     "INSERT INTO phone_numbers (number, contact_id) "\
-#                       "VALUES($3, (SELECT id FROM inserted))", record);
   end
 end
